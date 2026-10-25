@@ -1,0 +1,184 @@
+<title>Grocery Retention Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column of finding cards, each = headline number + chart + what to do */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --fg:#1d2420; --muted:#5d6a62; --rule:#dfe4dd;
+  --accent:#2f7d4f; --accent-soft:#d8ebdf; --second:#c0782a; --second-soft:#f3e2cc; --grid:#e8ece6;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121614; --surface:#1a201d; --fg:#e7ece8; --muted:#9aa89f; --rule:#2c3530;
+  --accent:#6cc28d; --accent-soft:#1f3a2a; --second:#e4a25a; --second-soft:#3d2c18; --grid:#252d29; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1a201d; --fg:#e7ece8; --muted:#9aa89f; --rule:#2c3530;
+  --accent:#6cc28d; --accent-soft:#1f3a2a; --second:#e4a25a; --second-soft:#3d2c18; --grid:#252d29; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:880px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+header{display:grid;gap:10px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-size:clamp(28px,5vw,40px);line-height:1.1;margin:0;text-wrap:balance}
+.lede{margin:0;max-width:64ch;color:var(--muted)}
+.facts{display:flex;flex-wrap:wrap;gap:8px 20px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.facts b{color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:22px clamp(16px,3vw,28px);display:grid;gap:12px;min-width:0}
+.card h2{font-family:var(--display);font-size:22px;line-height:1.2;margin:0;text-wrap:balance}
+.num{font-family:var(--display);color:var(--accent);font-size:1.05em}
+.card p{margin:0;max-width:68ch}
+.do{border-top:1px solid var(--rule);padding-top:10px;font-size:14px}
+.do b{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-right:6px}
+.note{font-size:13px;color:var(--muted)}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto;min-width:520px}
+svg text{font-family:var(--mono);font-size:12px;fill:var(--muted)}
+svg .lbl{fill:var(--fg)} svg .val{fill:var(--fg);font-weight:500}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+table.heat{border-collapse:separate;border-spacing:3px;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+table.heat th{font-weight:500;color:var(--muted);padding:4px 6px;text-align:center}
+table.heat th.row{text-align:left;white-space:nowrap}
+table.heat td{text-align:center;padding:6px 4px;border-radius:4px;min-width:34px;color:var(--fg)}
+footer{font-size:13px;color:var(--muted);display:grid;gap:6px}
+footer a{color:var(--accent)}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Grocery lifecycle analysis · SQL · 2017 panel</div>
+  <h1>What turns a first grocery order into a weekly habit</h1>
+  <p class="lede">Six findings from 1.47M item-level transactions of a US grocery retailer, written as a growth team would act on them: onboarding, retention, win-back and campaign measurement.</p>
+  <div class="facts"><span><b>2,469</b> households</span><span><b>155,848</b> trips</span><span><b>$4.6M</b> sales</span><span><b>$29.49</b> avg basket</span><span><b>27</b> campaigns</span></div>
+</header>
+
+<section class="card">
+  <div class="eyebrow">01 · Onboarding</div>
+  <h2>3+ trips in the first 28 days makes a household <span class="num">2.3×</span> as likely to be a year-end regular</h2>
+  <div class="chart" id="c-habit"></div>
+  <p class="note">Regular = shopped in at least 4 of weeks 45–52. Households first seen by week 40 (n = 2,447). 74% of 3+ trip households were regulars vs 33% of those with 1–2.</p>
+  <p class="do"><b>Act</b>Design onboarding around the 2nd and 3rd order inside four weeks, not just the first.</p>
+</section>
+
+<section class="card">
+  <div class="eyebrow">02 · Cohort retention</div>
+  <h2>Newer households keep <span class="num">63%</span> in month 1, against <span class="num">89%</span> for the established base</h2>
+  <div class="chart" id="c-heat"></div>
+  <p class="note">% of each first-month cohort that shopped N months later. The January cohort is mostly long-standing customers because the data starts on 1 Jan; Feb–Nov cohorts are the closest proxy for new customers.</p>
+  <p class="do"><b>Act</b>Report new-customer cohorts separately. A blended retention rate hides where the leak is.</p>
+</section>
+
+<section class="card">
+  <div class="eyebrow">03 · Fresh categories</div>
+  <h2>Early produce buyers are <span class="num">6–12 points</span> likelier to stay, at the same trip frequency</h2>
+  <div class="legend"><span><i style="background:var(--accent)"></i>Bought produce in first 28 days</span><span><i style="background:var(--second)"></i>No produce</span></div>
+  <div class="chart" id="c-produce"></div>
+  <p class="note">Compared within the same early-frequency band so the gap isn't just "frequent shoppers buy everything". Still a correlation.</p>
+  <p class="do"><b>Act</b>A/B test a produce-led first-order offer and measure 8-week regular rate.</p>
+</section>
+
+<section class="card">
+  <div class="eyebrow">04 · Win-back</div>
+  <h2>The odds of a lapsed household returning halve between week 1 and week 8</h2>
+  <div class="chart" id="c-winback"></div>
+  <p class="note">Of households already away k weeks, the share that shopped again within the next 4 weeks. Gaps starting by week 36.</p>
+  <p class="do"><b>Act</b>Fire win-back messages at 2–4 weeks of inactivity, while the return rate is still above 60%.</p>
+</section>
+
+<section class="card">
+  <div class="eyebrow">05 · Wallet share</div>
+  <h2>Households shopping 12+ departments spend <span class="num">6×</span> more a year and <span class="num">50%</span> more per trip</h2>
+  <div class="chart" id="c-width"></div>
+  <p class="note">Departments = PRODUCE, MEAT, DELI, PASTRY and so on. Frequent shoppers naturally cover more departments, so treat this as a lever to test.</p>
+  <p class="do"><b>Act</b>Cross-category nudges (e.g. bakery with dairy) to grow basket width, measured against a holdout.</p>
+</section>
+
+<section class="card">
+  <div class="eyebrow">06 · Campaign measurement</div>
+  <h2>Naive measurement says the campaigns did nothing. Matched by prior spend, they lifted spend <span class="num">+19 to +26 points</span></h2>
+  <div class="legend"><span><i style="background:var(--accent)"></i>Campaign 8 (May–Jun)</span><span><i style="background:var(--second)"></i>Campaign 13 (Aug–Sep)</span><span><i style="background:var(--muted)"></i>Campaign 18 (Oct–Dec)</span></div>
+  <div class="chart" id="c-lift"></div>
+  <p class="note">Lift = targeted households' % spend change minus untargeted households' change, within the same pre-campaign spend quintile. Targeted households spent ~3× more before each campaign, so a raw comparison is biased. Weighted lift: $29–59 per targeted household.</p>
+  <p class="do"><b>Act</b>Always keep a random holdout. Lift was near zero for top spenders, so spend campaign budget on low and mid spenders.</p>
+</section>
+
+<footer>
+  <span>Data: 84.51° / dunnhumby The Complete Journey (CC0), via the <a href="https://github.com/bradleyboehmke/completejourney" target="_blank" rel="noopener">completejourney</a> package. All queries in SQLite.</span>
+  <span>Limits: US supermarket panel, not Indian quick commerce; findings 1, 3 and 5 are correlations to be tested.</span>
+</footer>
+</div>
+
+<script>
+const D = __DATA__;
+const css = v => `var(--${v})`;
+function bars(el, rows, opt){
+  // horizontal bars: rows = [{label, value, text}]
+  const W=760, rowH=opt.rowH||34, left=opt.left||150, right=70, top=8, H=top+rows.length*rowH+8;
+  const max=opt.max||Math.max(...rows.map(r=>r.value));
+  const X=v=>left+(W-left-right)*v/max;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opt.aria}">`;
+  rows.forEach((r,i)=>{const y=top+i*rowH;
+    s+=`<text class="lbl" x="${left-10}" y="${y+rowH/2+4}" text-anchor="end">${r.label}</text>`;
+    s+=`<rect x="${left}" y="${y+6}" width="${Math.max(2,X(r.value)-left)}" height="${rowH-12}" rx="3" fill="${r.color||css('accent')}"/>`;
+    s+=`<text class="val" x="${X(r.value)+8}" y="${y+rowH/2+4}">${r.text}</text>`;});
+  el.innerHTML=s+'</svg>';
+}
+// 01 habit
+bars(document.getElementById('c-habit'), D.habit.map(r=>({label:r.trips_in_first_28_days, value:r.pct_regular_wk45_52, text:r.pct_regular_wk45_52+'%'})), {max:100, aria:'Percent regular by trips in first 28 days'});
+// 02 heatmap
+(function(){
+  const by={}; D.cohort.forEach(r=>{(by[r.cohort_month]??={})[r.months_since_first]=r;});
+  const mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov'];
+  let h='<table class="heat"><thead><tr><th class="row">First month · n</th>';
+  for(let m=1;m<=11;m++) h+=`<th>+${m}</th>`; h+='</tr></thead><tbody>';
+  for(let c=1;c<=11;c++){const row=by[c]; h+=`<tr><th class="row">${mon[c-1]} · ${row[0].cohort_size}</th>`;
+    for(let m=1;m<=11;m++){const r=row[m];
+      if(!r){h+='<td></td>';continue;}
+      const a=Math.max(0,(r.retention_pct-30)/65);
+      h+=`<td style="background:color-mix(in srgb, var(--accent) ${Math.round(a*85)}%, var(--surface))">${Math.round(r.retention_pct)}</td>`;}
+    h+='</tr>';}
+  document.getElementById('c-heat').innerHTML=h+'</tbody></table>';
+})();
+// 03 produce grouped
+(function(){
+  const bands=['1-2 trips','3-4 trips','5+ trips'], rows=[];
+  bands.forEach(b=>{
+    const p=D.produce.find(r=>r.early_frequency===b&&r.produce_group==='bought produce');
+    const n=D.produce.find(r=>r.early_frequency===b&&r.produce_group==='no produce');
+    rows.push({label:b+' · produce', value:p.pct_regular_wk45_52, text:p.pct_regular_wk45_52+'%'});
+    rows.push({label:'no produce', value:n.pct_regular_wk45_52, text:n.pct_regular_wk45_52+'%', color:css('second')});});
+  bars(document.getElementById('c-produce'), rows, {max:100,left:170,rowH:28,aria:'Regular rate by produce purchase'});
+})();
+// 04 win-back line
+(function(){
+  const W=760,H=260,l=56,r=30,t=20,b=44, rows=D.winback, maxK=12;
+  const X=k=>l+(W-l-r)*k/maxK, Y=v=>t+(H-t-b)*(1-v/100);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Return rate by weeks away">`;
+  [0,25,50,75,100].forEach(v=>{s+=`<line x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('grid')}"/><text x="${l-8}" y="${Y(v)+4}" text-anchor="end">${v}%</text>`;});
+  rows.forEach(d=>{s+=`<text x="${X(d.weeks_already_away)}" y="${H-20}" text-anchor="middle">${d.weeks_already_away}</text>`;});
+  s+=`<text x="${(l+W-r)/2}" y="${H-4}" text-anchor="middle">weeks already away</text>`;
+  s+=`<polyline fill="none" stroke="${css('accent')}" stroke-width="2.5" points="${rows.map(d=>X(d.weeks_already_away)+','+Y(d.pct_back_within_next_4_weeks)).join(' ')}"/>`;
+  rows.forEach(d=>{const x=X(d.weeks_already_away),y=Y(d.pct_back_within_next_4_weeks);
+    s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="${css('accent')}"/><text class="val" x="${x}" y="${y-12}" text-anchor="middle">${Math.round(d.pct_back_within_next_4_weeks)}%</text>`;});
+  document.getElementById('c-winback').innerHTML=s+'</svg>';
+})();
+// 05 width
+bars(document.getElementById('c-width'), D.width.map(r=>({label:r.width_band.replace(' departments',' depts'), value:r.avg_annual_spend_usd, text:'$'+Math.round(r.avg_annual_spend_usd).toLocaleString()+'/yr · $'+r.avg_basket_usd.toFixed(1)+'/trip'})), {left:110, aria:'Annual spend by departments shopped', max:4200});
+// 06 lift grouped by band
+(function(){
+  const W=760,H=300,l=56,r=20,t=24,b=56, camps=['8','13','18'], cols=[css('accent'),css('second'),css('muted')];
+  const vals=D.lift.map(d=>d.lift_pct_points), lo=Math.min(-10,...vals), hi=Math.max(...vals)+10;
+  const Y=v=>t+(H-t-b)*(hi-v)/(hi-lo), bw=(W-l-r)/5;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Campaign lift by pre-campaign spend band">`;
+  [0,20,40,60,80].filter(v=>v<=hi).forEach(v=>{s+=`<line x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}" stroke="${v===0?css('muted'):css('grid')}"/><text x="${l-8}" y="${Y(v)+4}" text-anchor="end">${v>0?'+':''}${v}</text>`;});
+  const names=['Lowest','Low','Middle','High','Highest'];
+  for(let q=1;q<=5;q++){const x0=l+(q-1)*bw;
+    s+=`<text x="${x0+bw/2}" y="${H-30}" text-anchor="middle" class="lbl">${names[q-1]}</text>`;
+    camps.forEach((c,i)=>{const d=D.lift.find(r=>String(r.campaign_id)===c&&r.pre_spend_band_1_low_5_high===q);
+      const w=(bw-28)/3, x=x0+14+i*w, v=d.lift_pct_points, y=Math.min(Y(v),Y(0)), h=Math.abs(Y(v)-Y(0));
+      s+=`<rect x="${x+2}" y="${y}" width="${w-4}" height="${Math.max(1,h)}" rx="2" fill="${cols[i]}"/>`;});}
+  s+=`<text x="${(l+W-r)/2}" y="${H-8}" text-anchor="middle">pre-campaign spend quintile · lift in percentage points</text>`;
+  document.getElementById('c-lift').innerHTML=s+'</svg>';
+})();
+</script>
